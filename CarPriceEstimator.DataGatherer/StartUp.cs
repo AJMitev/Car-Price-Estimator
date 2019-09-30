@@ -2,7 +2,7 @@
 {
     using System.Text;
 
-    public class Program
+    public class StartUp
     {
         public static void Main()
         {
