@@ -17,7 +17,7 @@
             foreach (var source in dataSources)
             {
                 var currentSourceData = await source.GatherData();
-                var filteredData = currentSourceData.Where(car => car.HorsePower > 0 && car.CubicCapacity > 0);
+                var filteredData = currentSourceData.Where(car => car.HorsePower > 0);
 
                 carData.AddRange(filteredData);
             }
