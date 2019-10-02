@@ -1,15 +1,28 @@
 ﻿namespace CarPriceEstimator.DataGatherer
 {
-    using System.Text;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Threading.Tasks;
 
     public class StartUp
     {
-        public static void Main()
+        public static async Task Main()
         {
-            System.Text.EncodingProvider provider = System.Text.CodePagesEncodingProvider.Instance;
-            Encoding.RegisterProvider(provider);
+            var dataSources = new List<ICarDataGatherer>
+            {
+                new CarsBgCarDataGatherer()
+            };
 
-            var comments = new CarsBgDataGatherer().GatherData(415500, 1).GetAwaiter().GetResult();
+            var carData = new List<Car>();
+            foreach (var source in dataSources)
+            {
+                var currentSourceData = await source.GatherData();
+                var filteredData = currentSourceData.Where(car => car.HorsePower > 0 && car.CubicCapacity > 0);
+
+                carData.AddRange(filteredData);
+            }
+
+            carData.SaveAsCSV("./cars.csv");
         }
     }
 }
