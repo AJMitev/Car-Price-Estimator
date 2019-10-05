@@ -1,4 +1,4 @@
-﻿namespace CarPriceEstimator.DataGatherer
+﻿namespace CarPriceEstimator.DataGatherer.Utils
 {
     using System;
     using System.Collections.Generic;
@@ -31,10 +31,9 @@
             return Regex.Match(input: yearRaw, pattern: YearPattern).Value;
         }
 
-        public static int ParseInteger(string rawData)
+        public static int ParseHorsePower(string rawData)
         {
-            var digitAsString = rawData.Split(separator: " ")
-                .First();
+            var digitAsString = rawData.Split(separator: ' ').First();
 
             var isDigit = int.TryParse(s: digitAsString, result: out var digit);
 

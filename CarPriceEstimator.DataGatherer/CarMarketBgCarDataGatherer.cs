@@ -7,14 +7,15 @@
     using System.Threading.Tasks;
     using AngleSharp.Html.Dom;
     using AngleSharp.Html.Parser;
+    using CarPriceEstimator.DataGatherer.Models;
+    using CarPriceEstimator.DataGatherer.Utils;
 
     public class CarMarketBgCarDataGatherer : ICarDataGatherer
     {
-        private const int OffersCount = 1000;
         private const int OffersPerPage = 15;
         private const string AdvancedSearchUri = "https://www.carmarket.bg/tarsene";
-        private const string PriceSeparator = " ";
-        private const string RangeSeparator = " ";
+        private const string FirstPageUrl = "https://www.carmarket.bg/obiavi/?sort=1";
+        private const string SpaceSeparator = " ";
         private const string OffersListLinkSelector = ".cmOffersListLink";
         private const string OfferDetailsSelector = "div.cmOfferMoreInfoRow strong";
         private const string MakeSelector = "section.cmOffer header h1";
@@ -22,9 +23,10 @@
         public async Task<IEnumerable<Car>> GatherData(HtmlParser parser, HttpClient client)
         {
             var cars = new List<Car>();
+            var pagesCount = await this.GetPagesCount(parser, client);
 
             var makes = await GetMakesWithModels(client: client, parser: parser);
-            var pages = (int)Math.Ceiling(a: OffersCount / (double)OffersPerPage);
+            var pages = (int)Math.Ceiling(a: pagesCount / (double)OffersPerPage);
 
             for (int page = 0; page < pages; page++)
             {
@@ -67,9 +69,9 @@
                             Model = model,
                             FuelType = fuelTypeRaw,
                             GearType = gearTypeRaw,
-                            Price = HtmlHelpers.ParseThousands(priceRaw, PriceSeparator),
-                            HorsePower = HtmlHelpers.ParseInteger(horsePowerRaw),
-                            Range = HtmlHelpers.ParseThousands(rangeRaw, RangeSeparator),
+                            Price = HtmlHelpers.ParseThousands(priceRaw, SpaceSeparator),
+                            HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
+                            Range = HtmlHelpers.ParseThousands(rangeRaw, SpaceSeparator),
                             Year = HtmlHelpers.ParseYear(yearRaw)
                         };
 
@@ -83,6 +85,18 @@
             }
 
             return cars;
+        }
+
+        private async Task<int> GetPagesCount(HtmlParser parser, HttpClient client)
+        {
+            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: FirstPageUrl);
+            var document = await parser.ParseDocumentAsync(source: htmlContent);
+
+            var offersElement = document.QuerySelector("span.foundOffers strong").TextContent;
+            var offersCount = HtmlHelpers.ParseThousands(offersElement,SpaceSeparator);
+
+
+            return offersCount;
         }
 
         private static async Task<Dictionary<string, List<string>>> GetMakesWithModels(HttpClient client, HtmlParser parser)

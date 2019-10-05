@@ -1,4 +1,4 @@
-﻿namespace CarPriceEstimator.DataGatherer
+﻿namespace CarPriceEstimator.DataGatherer.Models
 {
     public class Car
     {

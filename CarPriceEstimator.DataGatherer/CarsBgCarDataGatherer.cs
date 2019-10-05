@@ -9,6 +9,8 @@
     using AngleSharp.Dom;
     using AngleSharp.Html.Dom;
     using AngleSharp.Html.Parser;
+    using Utils;
+    using Models;
 
     public class CarsBgCarDataGatherer : ICarDataGatherer
     {
@@ -80,7 +82,7 @@
                             Range = HtmlHelpers.ParseThousands(rawData: rangeRaw, separator: RangeSeparator),
                             FuelType = fuelType,
                             GearType = gearType,
-                            HorsePower = HtmlHelpers.ParseInteger(horsePowerRaw),
+                            HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
                             Price = HtmlHelpers.ParseThousands(priceRaw, PriceSeparator)
                         };
 

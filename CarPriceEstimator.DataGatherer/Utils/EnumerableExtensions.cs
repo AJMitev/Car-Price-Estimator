@@ -1,4 +1,4 @@
-﻿namespace CarPriceEstimator.DataGatherer
+﻿namespace CarPriceEstimator.DataGatherer.Utils
 {
     using System.Collections.Generic;
     using System.IO;
@@ -8,7 +8,7 @@
 
     public static class EnumerableExtensions
     {
-        public static void SaveAsCSV<T>(this IEnumerable<T> items, string path)
+        public static void SaveAsCsv<T>(this IEnumerable<T> items, string path)
         {
             var itemType = typeof(T);
             var props = itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
