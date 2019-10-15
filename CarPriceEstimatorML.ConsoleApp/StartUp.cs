@@ -15,7 +15,7 @@ namespace CarPriceEstimatorML.ConsoleApp
     using CarPriceEstimator.DataGatherer.Models;
     using CarPriceEstimator.DataGatherer.Utils;
 
-    public class Program
+    public class StartUp
     {
         private const string CsvFileName = "cars.csv";
         private const string ModelFileName = "CarModel.zip";
@@ -57,13 +57,13 @@ namespace CarPriceEstimatorML.ConsoleApp
                 new CarsBgCarDataGatherer(),
                 new CarMarketBgCarDataGatherer()
             };
-            var client = new HttpClient();
+            using var client = new HttpClient();
             var parser = new HtmlParser();
             var carData = new List<Car>();
 
             foreach (var source in dataSources)
             {
-                var currentSourceData = await source.GatherData(parser, client);
+                var currentSourceData = await source.GatherData(parser, client).ConfigureAwait(false);
                 var filteredData = currentSourceData.Where(car => car.HorsePower > 0);
 
                 carData.AddRange(filteredData);

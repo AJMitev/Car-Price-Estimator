@@ -11,9 +11,4 @@
   <ItemGroup>
     <ProjectReference Include="..\CarPriceEstimator.DataGatherer\CarPriceEstimator.DataGatherer.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Update="cars.csv">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 </Project>
