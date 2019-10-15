@@ -29,7 +29,7 @@
         {
             var cars = new List<Car>();
 
-            var makes = await GetMakesWithModels(client: client, parser: parser);
+            var makes = await GetMakesWithModels(client: client, parser: parser).ConfigureAwait(false);
             var pages = (int)Math.Ceiling(a: OffersCount / (double)OffersPerPage);
 
             for (int page = pages; page >= 1; page--)
@@ -38,14 +38,14 @@
 
                 try
                 {
-                    var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: url);
+                    var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: url).ConfigureAwait(false);
 
                     if (string.IsNullOrWhiteSpace(value: htmlContent))
                     {
                         break;
                     }
 
-                    var document = await parser.ParseDocumentAsync(source: htmlContent);
+                    var document = await parser.ParseDocumentAsync(source: htmlContent).ConfigureAwait(false);
                     var carOffersTable = document.GetElementsByClassName(classNames: OffersTableClassName).FirstOrDefault();
 
                     var offersAtCurrentPage = carOffersTable?.Children[index: 0].Children.Length;
@@ -55,36 +55,10 @@
                     {
                         var offerUrl = $"https://www.cars.bg/{offersLinks[index: i]}";
                         Console.WriteLine(value: $"Crawling from {offerUrl}");
-                        var offerContent = await HtmlHelpers.GetHtmlContent(client: client, url: offerUrl);
-                        var offerDom = await parser.ParseDocumentAsync(source: offerContent);
 
-                        var offerTitle =
-                            offerDom.QuerySelector(selectors: OfferTitleSelector).InnerHtml;
-                        var make = HtmlHelpers.ParseMakeAndModel(offerTitle, makesCollection: makes.Keys);
-                        var model = HtmlHelpers.ParseMakeAndModel(offerTitle.Substring(startIndex: make.Length), makesCollection: makes[key: make]);
-
-                        var offerDetailsTable = offerDom.QuerySelector(selectors: OfferDetailsSelector).Children[index: 0].Children[index: 2];
-                        var offerDetailsLeftRows = offerDetailsTable.Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0];
-                        var offerDetailsRightRows = offerDetailsTable.Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 1].Children[index: 0].Children[index: 0];
-
-                        var yearRaw = offerDetailsLeftRows?.Children[index: 0]?.Children[index: 1]?.InnerHtml;
-                        var rangeRaw = offerDetailsLeftRows?.Children[index: 1]?.Children[index: 1]?.InnerHtml;
-                        var fuelType = offerDetailsLeftRows?.Children[index: 2]?.Children[index: 1]?.InnerHtml;
-                        var gearType = offerDetailsLeftRows?.Children[index: 3]?.Children[index: 1]?.InnerHtml;
-                        var horsePowerRaw = offerDetailsRightRows?.Children[index: 0]?.Children[index: 1]?.InnerHtml;
-                        var priceRaw = offerDom.QuerySelector(OfferPriceSelector).TextContent;
-
-                        var currentCar = new Car
-                        {
-                            Make = make,
-                            Model = model,
-                            Year = HtmlHelpers.ParseYear(yearRaw: yearRaw),
-                            Range = HtmlHelpers.ParseThousands(rawData: rangeRaw, separator: RangeSeparator),
-                            FuelType = fuelType,
-                            GearType = gearType,
-                            HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
-                            Price = HtmlHelpers.ParseThousands(priceRaw, PriceSeparator)
-                        };
+                        var offerContent = await HtmlHelpers.GetHtmlContent(client: client, url: offerUrl).ConfigureAwait(false);
+                        var offerDom = await parser.ParseDocumentAsync(source: offerContent).ConfigureAwait(false);
+                        var currentCar = ParseCurrentCarOffer(offerDom, makes);
 
                         cars.Add(item: currentCar);
                     }
@@ -96,6 +70,43 @@
             }
 
             return cars;
+        }
+
+        private static Car ParseCurrentCarOffer(IHtmlDocument offerDom, Dictionary<string, HashSet<string>> makes)
+        {
+            var offerTitle =
+                offerDom.QuerySelector(selectors: OfferTitleSelector).InnerHtml;
+            var make = HtmlHelpers.ParseMakeAndModel(offerTitle, makesCollection: makes.Keys);
+            var model = HtmlHelpers.ParseMakeAndModel(offerTitle.Substring(startIndex: make.Length),
+                makesCollection: makes[key: make]);
+
+            var offerDetailsTable =
+                offerDom.QuerySelector(selectors: OfferDetailsSelector).Children[index: 0].Children[index: 2];
+            var offerDetailsLeftRows = offerDetailsTable.Children[index: 0].Children[index: 0].Children[index: 0]
+                .Children[index: 0].Children[index: 0].Children[index: 0].Children[index: 0];
+            var offerDetailsRightRows = offerDetailsTable.Children[index: 0].Children[index: 0].Children[index: 0]
+                .Children[index: 0].Children[index: 1].Children[index: 0].Children[index: 0];
+
+            var yearRaw = offerDetailsLeftRows?.Children[index: 0]?.Children[index: 1]?.InnerHtml;
+            var rangeRaw = offerDetailsLeftRows?.Children[index: 1]?.Children[index: 1]?.InnerHtml;
+            var fuelType = offerDetailsLeftRows?.Children[index: 2]?.Children[index: 1]?.InnerHtml;
+            var gearType = offerDetailsLeftRows?.Children[index: 3]?.Children[index: 1]?.InnerHtml;
+            var horsePowerRaw = offerDetailsRightRows?.Children[index: 0]?.Children[index: 1]?.InnerHtml;
+            var priceRaw = offerDom.QuerySelector(OfferPriceSelector).TextContent;
+
+            var currentCar = new Car
+            {
+                Make = make,
+                Model = model,
+                Year = HtmlHelpers.ParseYear(yearRaw: yearRaw),
+                Range = HtmlHelpers.ParseThousands(rawData: rangeRaw, separator: RangeSeparator),
+                FuelType = fuelType,
+                GearType = gearType,
+                HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
+                Price = HtmlHelpers.ParseThousands(priceRaw, PriceSeparator)
+            };
+
+            return currentCar;
         }
 
         private List<string> GetOffersUri(IHtmlDocument document)
@@ -113,12 +124,12 @@
         {
             var makes = new Dictionary<string, HashSet<string>>();
 
-            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: AdvancedSearchUri);
-            var document = await parser.ParseDocumentAsync(source: htmlContent);
+            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: AdvancedSearchUri).ConfigureAwait(false);
+            var document = await parser.ParseDocumentAsync(source: htmlContent).ConfigureAwait(false);
             var makeElement = document.GetElementById(elementId: "BrandId");
             var optionsGroups = makeElement.Children.Skip(count: 1).ToList();
 
-            for (int i = 0; i < optionsGroups.Count(); i++)
+            for (int i = 0; i < optionsGroups.Count; i++)
             {
                 var currentOptionsGroup = optionsGroups[index: i];
 
@@ -127,7 +138,7 @@
                     var currentOption = currentOptionsGroup.Children[index: j] as IHtmlOptionElement;
                     var currentMake = currentOption?.InnerHtml;
 
-                    if (!makes.ContainsKey(key: currentMake))
+                    if (!makes.ContainsKey(key: currentMake ?? throw new InvalidOperationException()))
                     {
                         makes.Add(key: currentMake, value: new HashSet<string>());
                     }
@@ -135,8 +146,8 @@
                     var currentMakeId = currentOption?.Value;
 
                     var carModelUri = $"https://www.cars.bg/?ajax=multimodel&brandId={currentMakeId}";
-                    var carModelHtmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: carModelUri);
-                    var carModelResult = await parser.ParseDocumentAsync(source: carModelHtmlContent);
+                    var carModelHtmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: carModelUri).ConfigureAwait(false);
+                    var carModelResult = await parser.ParseDocumentAsync(source: carModelHtmlContent).ConfigureAwait(false);
 
                     var models = carModelResult.GetElementsByClassName(classNames: "model");
                     foreach (IElement element in models)
@@ -154,7 +165,7 @@
             return makes;
         }
 
-        private IEnumerable<string> GetOffersLink(IHtmlDocument html, string tag)
+        private static IEnumerable<string> GetOffersLink(IHtmlDocument html, string tag)
         {
             var links = new HashSet<string>();
             var offersAtOddPosition = html.GetElementsByClassName(classNames: tag);

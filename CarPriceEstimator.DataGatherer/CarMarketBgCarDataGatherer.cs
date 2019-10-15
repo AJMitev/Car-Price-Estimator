@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Linq;
     using System.Net.Http;
     using System.Threading.Tasks;
@@ -23,9 +24,9 @@
         public async Task<IEnumerable<Car>> GatherData(HtmlParser parser, HttpClient client)
         {
             var cars = new List<Car>();
-            var pagesCount = await this.GetPagesCount(parser, client);
+            var pagesCount = await GetPagesCount(parser, client).ConfigureAwait(false);
 
-            var makes = await GetMakesWithModels(client: client, parser: parser);
+            var makes = await GetMakesWithModels(client: client, parser: parser).ConfigureAwait(false);
             var pages = (int)Math.Ceiling(a: pagesCount / (double)OffersPerPage);
 
             for (int page = 0; page < pages; page++)
@@ -34,46 +35,23 @@
 
                 try
                 {
-                    var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: url);
+                    var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: url).ConfigureAwait(false);
 
                     if (string.IsNullOrWhiteSpace(value: htmlContent))
                     {
                         break;
                     }
 
-                    var document = await parser.ParseDocumentAsync(source: htmlContent);
+                    var document = await parser.ParseDocumentAsync(source: htmlContent).ConfigureAwait(false);
                     var links = document.QuerySelectorAll(OffersListLinkSelector).Select(x => ((IHtmlAnchorElement)x).Href);
 
                     foreach (var link in links)
                     {
                         Console.WriteLine(value: $"Crawling from {link}");
-                        var offerContent = await HtmlHelpers.GetHtmlContent(client: client, url: link);
-                        var offerDom = await parser.ParseDocumentAsync(source: offerContent);
+                        var offerContent = await HtmlHelpers.GetHtmlContent(client: client, url: link).ConfigureAwait(false);
+                        var offerDom = await parser.ParseDocumentAsync(source: offerContent).ConfigureAwait(false);
 
-                        var offerDetails = offerDom.QuerySelectorAll(OfferDetailsSelector);
-
-                        var priceRaw = offerDetails[0].TextContent;
-                        var yearRaw = offerDetails[1].TextContent;
-                        var fuelTypeRaw = offerDetails[2].TextContent;
-                        var horsePowerRaw = offerDetails[3].TextContent;
-                        var gearTypeRaw = offerDetails[4].TextContent;
-                        var rangeRaw = offerDetails[6].TextContent;
-                        var makeAndModelRaw = offerDom.QuerySelector(MakeSelector).TextContent;
-
-                        var make = HtmlHelpers.ParseMakeAndModel(makeAndModelRaw, makesCollection: makes.Keys);
-                        var model = HtmlHelpers.ParseMakeAndModel(makeAndModelRaw.Substring(startIndex: make.Length), makesCollection: makes[key: make]);
-
-                        var car = new Car
-                        {
-                            Make = make,
-                            Model = model,
-                            FuelType = fuelTypeRaw,
-                            GearType = gearTypeRaw,
-                            Price = HtmlHelpers.ParseThousands(priceRaw, SpaceSeparator),
-                            HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
-                            Range = HtmlHelpers.ParseThousands(rangeRaw, SpaceSeparator),
-                            Year = HtmlHelpers.ParseYear(yearRaw)
-                        };
+                        var car = ParseCurrentCarOffer(offerDom, makes);
 
                         cars.Add(car);
                     }
@@ -87,10 +65,40 @@
             return cars;
         }
 
+        private static Car ParseCurrentCarOffer(IHtmlDocument offerDom, Dictionary<string, List<string>> makes)
+        {
+            var offerDetails = offerDom.QuerySelectorAll(OfferDetailsSelector);
+
+            var priceRaw = offerDetails[0].TextContent;
+            var yearRaw = offerDetails[1].TextContent;
+            var fuelTypeRaw = offerDetails[2].TextContent;
+            var horsePowerRaw = offerDetails[3].TextContent;
+            var gearTypeRaw = offerDetails[4].TextContent;
+            var rangeRaw = offerDetails[6].TextContent;
+            var makeAndModelRaw = offerDom.QuerySelector(MakeSelector).TextContent;
+
+            var make = HtmlHelpers.ParseMakeAndModel(makeAndModelRaw, makesCollection: makes.Keys);
+            var model = HtmlHelpers.ParseMakeAndModel(makeAndModelRaw.Substring(startIndex: make.Length),
+                makesCollection: makes[key: make]);
+
+            var car = new Car
+            {
+                Make = make,
+                Model = model,
+                FuelType = fuelTypeRaw,
+                GearType = gearTypeRaw,
+                Price = HtmlHelpers.ParseThousands(priceRaw, SpaceSeparator),
+                HorsePower = HtmlHelpers.ParseHorsePower(horsePowerRaw),
+                Range = HtmlHelpers.ParseThousands(rangeRaw, SpaceSeparator),
+                Year = HtmlHelpers.ParseYear(yearRaw)
+            };
+            return car;
+        }
+
         private async Task<int> GetPagesCount(HtmlParser parser, HttpClient client)
         {
-            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: FirstPageUrl);
-            var document = await parser.ParseDocumentAsync(source: htmlContent);
+            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: FirstPageUrl).ConfigureAwait(false);
+            var document = await parser.ParseDocumentAsync(source: htmlContent).ConfigureAwait(false);
 
             var offersElement = document.QuerySelector("span.foundOffers strong").TextContent;
             var offersCount = HtmlHelpers.ParseThousands(offersElement,SpaceSeparator);
@@ -102,12 +110,12 @@
         private static async Task<Dictionary<string, List<string>>> GetMakesWithModels(HttpClient client, HtmlParser parser)
         {
             var makes = new Dictionary<string, List<string>>();
-            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: AdvancedSearchUri);
-            var document = await parser.ParseDocumentAsync(source: htmlContent);
+            var htmlContent = await HtmlHelpers.GetHtmlContent(client: client, url: AdvancedSearchUri).ConfigureAwait(false);
+            var document = await parser.ParseDocumentAsync(source: htmlContent).ConfigureAwait(false);
 
             var makeElement = document.GetElementById(elementId: "brand_id");
             var optionsGroups = makeElement.Children.Skip(count: 1).ToList();
-            for (int i = 0; i < optionsGroups.Count(); i++)
+            for (int i = 0; i < optionsGroups.Count; i++)
             {
                 var currentOptionsGroup = optionsGroups[index: i];
 
@@ -122,7 +130,7 @@
                             makes.Add(key: currentMake, value: new List<string>());
                         }
 
-                        var currentMakeId = int.Parse(currentOption.Value);
+                        var currentMakeId = int.Parse(currentOption.Value, CultureInfo.InvariantCulture);
                         var currentMakeModels = GetModelsByMake(currentMakeId);
                         makes[currentMake].AddRange(currentMakeModels);
                     }

@@ -5,7 +5,6 @@
     using System.Threading.Tasks;
     using AngleSharp.Html.Parser;
     using CarPriceEstimator.DataGatherer.Models;
-    using Models;
 
     public interface ICarDataGatherer
     {

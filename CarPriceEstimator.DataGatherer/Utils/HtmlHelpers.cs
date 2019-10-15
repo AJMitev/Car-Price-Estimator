@@ -2,6 +2,7 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.Globalization;
     using System.Linq;
     using System.Net.Http;
     using System.Text.RegularExpressions;
@@ -14,8 +15,11 @@
 
         public static async Task<string> GetHtmlContent(HttpClient client, string url)
         {
-            var response = await client.GetAsync(requestUri: url);
-            var contentBytes = await response.Content.ReadAsByteArrayAsync();
+            DataValidator.ThrowIfNull(client, nameof(client));
+            DataValidator.ThrowIfNullOrEmpty(url, nameof(url));
+
+            var response = await client.GetAsync(requestUri: url).ConfigureAwait(false);
+            var contentBytes = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
             var htmlContent = System.Text.Encoding.UTF8.GetString(bytes: contentBytes);
 
             return htmlContent;
@@ -33,7 +37,7 @@
 
         public static int ParseHorsePower(string rawData)
         {
-            var digitAsString = rawData.Split(separator: ' ').First();
+            var digitAsString = rawData?.Split(separator: ' ').First();
 
             var isDigit = int.TryParse(s: digitAsString, result: out var digit);
 
@@ -50,11 +54,14 @@
             var value = Regex.Match(rawData, ThousandsPattern).Value;
             value = value.Replace(separator, string.Empty);
 
-            return int.Parse(value);
+            return int.Parse(value, CultureInfo.InvariantCulture);
         }
 
         public static string ParseMakeAndModel(string rawData, ICollection<string> makesCollection)
         {
+            DataValidator.ThrowIfNullOrEmpty(rawData, nameof(rawData));
+            DataValidator.ThrowIfNull(makesCollection, nameof(makesCollection));
+
             var titleParts = rawData.Split(separator: new[] { ' ' }, options: StringSplitOptions.RemoveEmptyEntries);
             var pattern = string.Empty;
 
